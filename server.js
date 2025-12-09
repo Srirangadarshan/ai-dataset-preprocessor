@@ -21,7 +21,7 @@ app.use(express.static('public'));
 
 // Multer configuration for file uploads
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
@@ -35,7 +35,7 @@ if (!fs.existsSync('uploads')) {
 function parseFileContent(buffer, filename) {
     const ext = path.extname(filename).toLowerCase();
     const content = buffer.toString('utf-8');
-    
+
     try {
         if (ext === '.json') {
             return { type: 'json', data: JSON.parse(content), raw: content };
@@ -54,10 +54,10 @@ function parseFileContent(buffer, filename) {
 function parseCSV(content) {
     const lines = content.trim().split('\n');
     if (lines.length === 0) return [];
-    
+
     const headers = parseCSVLine(lines[0]);
     const data = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
         const row = {};
@@ -66,7 +66,7 @@ function parseCSV(content) {
         });
         data.push(row);
     }
-    
+
     return data;
 }
 
@@ -75,10 +75,10 @@ function parseCSVLine(line) {
     const result = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        
+
         if (char === '"') {
             inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
@@ -89,17 +89,17 @@ function parseCSVLine(line) {
         }
     }
     result.push(current);
-    
+
     return result;
 }
 
 // Convert data back to CSV
 function dataToCSV(data) {
     if (!Array.isArray(data) || data.length === 0) return '';
-    
+
     const headers = Object.keys(data[0]);
     const csvLines = [headers.join(',')];
-    
+
     for (const row of data) {
         const values = headers.map(h => {
             const val = String(row[h] || '');
@@ -111,7 +111,7 @@ function dataToCSV(data) {
         });
         csvLines.push(values.join(','));
     }
-    
+
     return csvLines.join('\n');
 }
 
@@ -121,9 +121,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        
+
         const parsed = parseFileContent(req.file.buffer, req.file.originalname);
-        
+
         res.json({
             success: true,
             filename: req.file.originalname,
@@ -141,17 +141,17 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 app.post('/api/process', async (req, res) => {
     try {
         const { data, prompt, type } = req.body;
-        
+
         if (!data || !prompt) {
             return res.status(400).json({ error: 'Data and prompt are required' });
         }
-        
+
         if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
             return res.status(400).json({ error: 'Please configure your Gemini API key in .env file' });
         }
-        
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        
+
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
         // Prepare data string for AI
         let dataString;
         if (type === 'csv' || Array.isArray(data)) {
@@ -161,7 +161,7 @@ app.post('/api/process', async (req, res) => {
         } else {
             dataString = data;
         }
-        
+
         // Craft the AI prompt
         const aiPrompt = `You are a data preprocessing assistant. You will receive a dataset and a user instruction.
 Your task is to transform/preprocess the data according to the user's instruction.
@@ -182,13 +182,30 @@ ${dataString}
 
 RESPOND WITH ONLY THE PROCESSED JSON DATA, NO OTHER TEXT:`;
 
-        const result = await model.generateContent(aiPrompt);
-        const response = await result.response;
-        let responseText = response.text().trim();
+        // Add retry logic for quota issues
+        let result, response, responseText;
+        let retries = 3;
         
+        while (retries > 0) {
+            try {
+                result = await model.generateContent(aiPrompt);
+                response = await result.response;
+                responseText = response.text().trim();
+                break; // Success, exit retry loop
+            } catch (retryError) {
+                retries--;
+                if (retryError.message.includes('quota') && retries > 0) {
+                    console.log(`Quota exceeded, retrying in 2 seconds... (${retries} retries left)`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    throw retryError; // Re-throw if not quota error or no retries left
+                }
+            }
+        }
+
         // Clean up response - remove markdown code blocks if present
         responseText = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-        
+
         // Try to parse the response
         let processedData;
         try {
@@ -203,16 +220,26 @@ RESPOND WITH ONLY THE PROCESSED JSON DATA, NO OTHER TEXT:`;
                 processedData = { data: responseText };
             }
         }
-        
+
         res.json({
             success: true,
             data: processedData,
             originalType: type
         });
-        
+
     } catch (error) {
         console.error('Processing error:', error);
-        res.status(500).json({ error: 'AI processing failed: ' + error.message });
+
+        // More specific error messages
+        if (error.message.includes('API key')) {
+            res.status(400).json({ error: 'Invalid API key. Please check your Gemini API key in .env file' });
+        } else if (error.message.includes('quota')) {
+            res.status(429).json({ error: 'API quota exceeded. Please try again later' });
+        } else if (error.message.includes('model')) {
+            res.status(400).json({ error: 'Model not available. Please try again or contact support' });
+        } else {
+            res.status(500).json({ error: 'AI processing failed: ' + error.message });
+        }
     }
 });
 
@@ -220,9 +247,9 @@ RESPOND WITH ONLY THE PROCESSED JSON DATA, NO OTHER TEXT:`;
 app.post('/api/export', (req, res) => {
     try {
         const { data, format } = req.body;
-        
+
         let content, contentType, filename;
-        
+
         if (format === 'csv') {
             content = dataToCSV(Array.isArray(data) ? data : [data]);
             contentType = 'text/csv';
@@ -236,14 +263,14 @@ app.post('/api/export', (req, res) => {
             contentType = 'text/plain';
             filename = 'processed_data.txt';
         }
-        
+
         res.json({
             success: true,
             content: content,
             contentType: contentType,
             filename: filename
         });
-        
+
     } catch (error) {
         console.error('Export error:', error);
         res.status(500).json({ error: 'Export failed: ' + error.message });
