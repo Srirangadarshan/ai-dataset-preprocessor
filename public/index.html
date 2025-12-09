@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Dataset Preprocessor | Transform Your Data with Gemini</title>
+    <meta name="description" content="Upload and preprocess your datasets using AI. Supports CSV, JSON, and text files.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <h1>AI Data Preprocessor</h1>
+            </div>
+            <p class="tagline">Transform your datasets with natural language using Gemini AI</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="card upload-section" id="upload-section">
+                <h2>📁 Upload Dataset</h2>
+                <div class="upload-zone" id="upload-zone">
+                    <input type="file" id="file-input" accept=".csv,.json,.txt,.tsv" hidden>
+                    <div class="upload-content">
+                        <span class="upload-icon">📤</span>
+                        <p>Drag & drop your file here or <span class="upload-link">browse</span></p>
+                        <small>Supports CSV, JSON, TXT files (max 10MB)</small>
+                    </div>
+                </div>
+                <div class="file-info" id="file-info" style="display: none;">
+                    <span class="file-name" id="file-name"></span>
+                    <button class="btn-clear" id="clear-file">✕</button>
+                </div>
+            </section>
+
+            <!-- Prompt Section -->
+            <section class="card prompt-section" id="prompt-section" style="display: none;">
+                <h2>✨ Preprocessing Prompt</h2>
+                <div class="prompt-container">
+                    <textarea 
+                        id="prompt-input" 
+                        placeholder="Describe how you want to transform your data...&#10;&#10;Examples:&#10;• Remove all rows where age is less than 18&#10;• Normalize the 'price' column to be between 0 and 1&#10;• Add a new column 'full_name' by combining 'first' and 'last'&#10;• Convert all dates to YYYY-MM-DD format&#10;• Remove duplicate entries based on email"
+                        rows="5"
+                    ></textarea>
+                    <div class="prompt-actions">
+                        <button class="btn btn-primary" id="process-btn">
+                            <span class="btn-text">🚀 Process with AI</span>
+                            <span class="btn-loading" style="display: none;">Processing...</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Quick Prompts -->
+                <div class="quick-prompts">
+                    <span class="quick-label">Quick actions:</span>
+                    <button class="chip" data-prompt="Remove all duplicate rows">Remove duplicates</button>
+                    <button class="chip" data-prompt="Remove rows with any empty or null values">Remove empty rows</button>
+                    <button class="chip" data-prompt="Trim whitespace from all string values">Trim whitespace</button>
+                    <button class="chip" data-prompt="Sort the data alphabetically by the first column">Sort data</button>
+                    <button class="chip" data-prompt="Convert all text to lowercase">Lowercase all</button>
+                </div>
+            </section>
+
+            <!-- Data Preview Section -->
+            <section class="card data-section" id="data-section" style="display: none;">
+                <div class="data-header">
+                    <h2>📊 Data Preview</h2>
+                    <div class="data-tabs">
+                        <button class="tab active" data-view="original">Original</button>
+                        <button class="tab" data-view="processed" id="processed-tab" disabled>Processed</button>
+                    </div>
+                </div>
+                
+                <div class="data-view" id="data-view">
+                    <div class="data-stats" id="data-stats"></div>
+                    <div class="table-container" id="table-container">
+                        <p class="empty-state">Upload a file to see preview</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export Section -->
+            <section class="card export-section" id="export-section" style="display: none;">
+                <h2>💾 Export Processed Data</h2>
+                <div class="export-options">
+                    <button class="btn btn-export" data-format="csv">
+                        <span class="export-icon">📄</span>
+                        Export as CSV
+                    </button>
+                    <button class="btn btn-export" data-format="json">
+                        <span class="export-icon">📋</span>
+                        Export as JSON
+                    </button>
+                    <button class="btn btn-export" data-format="txt">
+                        <span class="export-icon">📝</span>
+                        Export as TXT
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">
+            <span class="toast-message" id="toast-message"></span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
