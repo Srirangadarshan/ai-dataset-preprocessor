@@ -123,7 +123,7 @@ async function processFile(file) {
         state.processedData = null;
 
         // Update UI
-        elements.fileName.textContent = `✅ ${result.filename}`;
+        elements.fileName.textContent = result.filename;
         elements.fileInfo.style.display = 'flex';
         elements.promptSection.style.display = 'block';
         elements.dataSection.style.display = 'block';
@@ -285,8 +285,8 @@ function renderTable(data) {
 
     // Stats
     elements.dataStats.innerHTML = `
-        <span>📊 <strong>${data.length}</strong> rows</span>
-        <span>📋 <strong>${headers.length}</strong> columns</span>
+        <span><strong>${data.length}</strong> rows</span>
+        <span><strong>${headers.length}</strong> columns</span>
     `;
 
     // Table
@@ -310,13 +310,13 @@ function renderTable(data) {
 }
 
 function renderText(text) {
-    elements.dataStats.innerHTML = `<span>📝 <strong>${text.length}</strong> characters</span>`;
+    elements.dataStats.innerHTML = `<span><strong>${text.length}</strong> characters</span>`;
     elements.tableContainer.innerHTML = `<pre class="text-preview">${escapeHTML(text)}</pre>`;
 }
 
 function renderJSON(data) {
     const json = JSON.stringify(data, null, 2);
-    elements.dataStats.innerHTML = `<span>📋 JSON object</span>`;
+    elements.dataStats.innerHTML = `<span>JSON object</span>`;
     elements.tableContainer.innerHTML = `<pre class="text-preview">${escapeHTML(json)}</pre>`;
 }
 
