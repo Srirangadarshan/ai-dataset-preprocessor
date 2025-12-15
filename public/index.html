@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Dataset Preprocessor | Transform Your Data with Gemini</title>
-    <meta name="description" content="Upload and preprocess your datasets using AI. Supports CSV, JSON, and text files.">
+    <meta name="description"
+        content="Upload and preprocess your datasets using AI. Supports CSV, JSON, and text files.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&family=Smooch+Sans:wght@100..900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&family=Smooch+Sans:wght@100..900&family=Oswald:wght@200..700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Header -->
@@ -42,18 +47,7 @@
             <section class="card prompt-section" id="prompt-section" style="display: none;">
                 <h2>Processing Instructions</h2>
                 <div class="prompt-container">
-                    <textarea 
-                        id="prompt-input" 
-                        placeholder="Describe how you want to transform your data...
-
-Examples:
-• Remove all rows where age is less than 18
-• Normalize the 'price' column to be between 0 and 1
-• Add a new column 'full_name' by combining 'first' and 'last'
-• Convert all dates to YYYY-MM-DD format
-• Remove duplicate entries based on email"
-                        rows="5"
-                    ></textarea>
+                    <textarea id="prompt-input" placeholder="Describe your data transformation..." rows="3"></textarea>
                     <div class="prompt-actions">
                         <button class="btn btn-primary" id="process-btn">
                             <span class="btn-text">Start Processing</span>
@@ -61,14 +55,16 @@ Examples:
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Quick Prompts -->
                 <div class="quick-prompts">
                     <span class="quick-label">Quick actions</span>
                     <button class="chip" data-prompt="Remove all duplicate rows">Remove duplicates</button>
-                    <button class="chip" data-prompt="Remove rows with any empty or null values">Remove empty rows</button>
+                    <button class="chip" data-prompt="Remove rows with any empty or null values">Remove empty
+                        rows</button>
                     <button class="chip" data-prompt="Trim whitespace from all string values">Trim whitespace</button>
-                    <button class="chip" data-prompt="Sort the data alphabetically by the first column">Sort data</button>
+                    <button class="chip" data-prompt="Sort the data alphabetically by the first column">Sort
+                        data</button>
                     <button class="chip" data-prompt="Convert all text to lowercase">Lowercase all</button>
                 </div>
             </section>
@@ -82,7 +78,7 @@ Examples:
                         <button class="tab" data-view="processed" id="processed-tab" disabled>Processed</button>
                     </div>
                 </div>
-                
+
                 <div class="data-view" id="data-view">
                     <div class="data-stats" id="data-stats"></div>
                     <div class="table-container" id="table-container">
@@ -119,4 +115,5 @@ Examples:
 
     <script src="app.js"></script>
 </body>
+
 </html>
