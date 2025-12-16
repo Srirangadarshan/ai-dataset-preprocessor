@@ -13,7 +13,8 @@ const state = {
     selectedModel: null,
     trainedModelId: null,
     featureColumns: [],
-    targetColumn: null
+    targetColumn: null,
+    lastTrainingResult: null
 };
 
 // DOM Elements
@@ -105,6 +106,12 @@ function setupEventListeners() {
     // Download model button
     if (elements.downloadModelBtn) {
         elements.downloadModelBtn.addEventListener('click', downloadModel);
+    }
+
+    // Download report button
+    const downloadReportBtn = document.getElementById('download-report-btn');
+    if (downloadReportBtn) {
+        downloadReportBtn.addEventListener('click', downloadTrainingReport);
     }
 
     // Predict button
@@ -547,6 +554,7 @@ async function trainModel() {
         state.trainedModelId = result.modelId;
         state.featureColumns = result.featureColumns;
         state.targetColumn = elements.targetColumn.value;
+        state.lastTrainingResult = result;
 
         // Display results
         displayTrainingResults(result);
@@ -758,8 +766,206 @@ function displayTrainingResults(result) {
         modelSummaryText.innerHTML = summaryContent;
     }
 
+    // Training Configuration
+    const trainingConfig = document.getElementById('training-config');
+    if (trainingConfig) {
+        const dataAnalysis = result.dataAnalysis || {};
+        trainingConfig.innerHTML = `
+            <div class="config-item">
+                <span class="config-label">Random State</span>
+                <span class="config-value">42</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Validation</span>
+                <span class="config-value">5-Fold CV</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Scaling</span>
+                <span class="config-value">StandardScaler</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Missing Values</span>
+                <span class="config-value">${dataAnalysis.missingValues || 0}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Categorical Features</span>
+                <span class="config-value">${dataAnalysis.categoricalFeatures || 0}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Numerical Features</span>
+                <span class="config-value">${dataAnalysis.numericalFeatures || result.featureColumns?.length || 0}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Target Distribution</span>
+                <span class="config-value">${dataAnalysis.targetDistribution || 'Analyzed'}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Encoding</span>
+                <span class="config-value">Label Encoder</span>
+            </div>
+        `;
+    }
+
+    // Render Charts
+    renderCharts(result);
+
     // Show prediction section
     showPredictionSection();
+}
+
+// Chart rendering functions
+let featureChart = null;
+let metricsChart = null;
+
+function renderCharts(result) {
+    // Feature Importance Chart
+    const featureCtx = document.getElementById('feature-importance-chart');
+    if (featureCtx && result.featureImportance) {
+        // Destroy existing chart
+        if (featureChart) {
+            featureChart.destroy();
+        }
+
+        const sortedFeatures = Object.entries(result.featureImportance)
+            .sort((a, b) => b[1] - a[1]);
+        
+        const labels = sortedFeatures.map(([name]) => name);
+        const data = sortedFeatures.map(([, value]) => (value * 100).toFixed(1));
+
+        featureChart = new Chart(featureCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Importance (%)',
+                    data: data,
+                    backgroundColor: 'rgba(26, 115, 232, 0.8)',
+                    borderColor: 'rgba(26, 115, 232, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Metrics Chart
+    const metricsCtx = document.getElementById('metrics-chart');
+    if (metricsCtx && result.metrics) {
+        // Destroy existing chart
+        if (metricsChart) {
+            metricsChart.destroy();
+        }
+
+        const metrics = result.metrics;
+        const metricLabels = [];
+        const metricData = [];
+        const metricColors = [];
+
+        if (metrics.accuracy !== null && metrics.accuracy !== undefined) {
+            metricLabels.push('Accuracy');
+            metricData.push((metrics.accuracy * 100).toFixed(1));
+            metricColors.push('rgba(19, 115, 51, 0.8)');
+        }
+        if (metrics.precision !== null && metrics.precision !== undefined) {
+            metricLabels.push('Precision');
+            metricData.push((metrics.precision * 100).toFixed(1));
+            metricColors.push('rgba(26, 115, 232, 0.8)');
+        }
+        if (metrics.recall !== null && metrics.recall !== undefined) {
+            metricLabels.push('Recall');
+            metricData.push((metrics.recall * 100).toFixed(1));
+            metricColors.push('rgba(249, 171, 0, 0.8)');
+        }
+        if (metrics.f1Score !== null && metrics.f1Score !== undefined) {
+            metricLabels.push('F1 Score');
+            metricData.push((metrics.f1Score * 100).toFixed(1));
+            metricColors.push('rgba(217, 48, 37, 0.8)');
+        }
+        if (metrics.r2Score !== null && metrics.r2Score !== undefined) {
+            metricLabels.push('R² Score');
+            metricData.push((metrics.r2Score * 100).toFixed(1));
+            metricColors.push('rgba(156, 39, 176, 0.8)');
+        }
+        if (metrics.crossValScore !== null && metrics.crossValScore !== undefined) {
+            metricLabels.push('Cross-Val');
+            metricData.push((metrics.crossValScore * 100).toFixed(1));
+            metricColors.push('rgba(0, 150, 136, 0.8)');
+        }
+
+        metricsChart = new Chart(metricsCtx, {
+            type: 'radar',
+            data: {
+                labels: metricLabels,
+                datasets: [{
+                    label: 'Model Performance',
+                    data: metricData,
+                    backgroundColor: 'rgba(26, 115, 232, 0.2)',
+                    borderColor: 'rgba(26, 115, 232, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(26, 115, 232, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(26, 115, 232, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            stepSize: 20,
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        angleLines: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 function showPredictionSection() {
@@ -802,6 +1008,87 @@ async function downloadModel() {
         console.error('Download error:', error);
         showToast(error.message, 'error');
     }
+}
+
+function downloadTrainingReport() {
+    if (!state.trainedModelId || !state.lastTrainingResult) {
+        showToast('No training report available', 'error');
+        return;
+    }
+
+    const result = state.lastTrainingResult;
+    const report = `
+================================================================================
+                        MACHINE LEARNING TRAINING REPORT
+================================================================================
+
+Generated: ${new Date().toISOString()}
+Model ID: ${state.trainedModelId}
+
+--------------------------------------------------------------------------------
+MODEL CONFIGURATION
+--------------------------------------------------------------------------------
+Model Type:          ${result.modelDisplayName || result.modelType}
+Task Type:           ${result.taskType || 'Classification'}
+Target Column:       ${state.targetColumn}
+Feature Columns:     ${state.featureColumns.join(', ')}
+
+--------------------------------------------------------------------------------
+DATA SPLIT
+--------------------------------------------------------------------------------
+Total Samples:       ${result.trainSize + result.testSize}
+Training Samples:    ${result.trainSize}
+Test Samples:        ${result.testSize}
+Test Split Ratio:    ${(result.testSize / (result.trainSize + result.testSize) * 100).toFixed(0)}%
+
+--------------------------------------------------------------------------------
+PERFORMANCE METRICS
+--------------------------------------------------------------------------------
+${result.metrics.accuracy !== null ? `Accuracy:            ${(result.metrics.accuracy * 100).toFixed(2)}%` : ''}
+${result.metrics.precision !== null ? `Precision:           ${(result.metrics.precision * 100).toFixed(2)}%` : ''}
+${result.metrics.recall !== null ? `Recall:              ${(result.metrics.recall * 100).toFixed(2)}%` : ''}
+${result.metrics.f1Score !== null ? `F1 Score:            ${(result.metrics.f1Score * 100).toFixed(2)}%` : ''}
+${result.metrics.r2Score !== null ? `R² Score:            ${(result.metrics.r2Score * 100).toFixed(2)}%` : ''}
+${result.metrics.mse !== null ? `MSE:                 ${result.metrics.mse}` : ''}
+${result.metrics.rmse !== null ? `RMSE:                ${result.metrics.rmse}` : ''}
+${result.metrics.mae !== null ? `MAE:                 ${result.metrics.mae}` : ''}
+${result.metrics.crossValScore !== null ? `Cross-Val Score:     ${(result.metrics.crossValScore * 100).toFixed(2)}%` : ''}
+Training Time:       ${result.metrics.trainingTime || 'N/A'}
+
+--------------------------------------------------------------------------------
+FEATURE IMPORTANCE
+--------------------------------------------------------------------------------
+${Object.entries(result.featureImportance || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([feature, importance]) => `${feature.padEnd(20)} ${(importance * 100).toFixed(2)}%`)
+    .join('\n')}
+
+--------------------------------------------------------------------------------
+HYPERPARAMETERS
+--------------------------------------------------------------------------------
+${Object.entries(result.modelParameters || {})
+    .map(([param, value]) => `${param.padEnd(20)} ${value}`)
+    .join('\n')}
+
+--------------------------------------------------------------------------------
+MODEL SUMMARY
+--------------------------------------------------------------------------------
+${result.modelSummary || 'N/A'}
+
+${result.recommendations ? `
+--------------------------------------------------------------------------------
+RECOMMENDATIONS
+--------------------------------------------------------------------------------
+${result.recommendations}
+` : ''}
+
+================================================================================
+                              END OF REPORT
+================================================================================
+`;
+
+    downloadFile(report, `training_report_${state.trainedModelId}.txt`, 'text/plain');
+    showToast('Training report downloaded', 'success');
 }
 
 async function makePrediction() {

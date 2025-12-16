@@ -9,9 +9,8 @@
         content="Upload and preprocess your datasets using AI. Supports CSV, JSON, and text files.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&family=Smooch+Sans:wght@100..900&family=Oswald:wght@200..700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&family=Oswald:wght@200..700&family=Science+Gothic:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -195,9 +194,24 @@
                     </div>
                 </div>
 
-                <!-- Feature Importance -->
+                <!-- Charts Section -->
+                <div class="results-subsection charts-section">
+                    <h3 class="subsection-title">Model Analytics</h3>
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <h4 class="chart-title">Feature Importance</h4>
+                            <canvas id="feature-importance-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h4 class="chart-title">Metrics Overview</h4>
+                            <canvas id="metrics-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Importance Table -->
                 <div class="results-subsection">
-                    <h3 class="subsection-title">Feature Importance</h3>
+                    <h3 class="subsection-title">Feature Analysis</h3>
                     <div class="feature-importance" id="feature-importance">
                         <!-- Feature importance will be populated dynamically -->
                     </div>
@@ -205,25 +219,34 @@
 
                 <!-- Model Parameters -->
                 <div class="results-subsection">
-                    <h3 class="subsection-title">Model Parameters</h3>
+                    <h3 class="subsection-title">Hyperparameters</h3>
                     <div class="model-params" id="model-params">
                         <!-- Model parameters will be populated dynamically -->
                     </div>
                 </div>
 
+                <!-- Training Configuration -->
+                <div class="results-subsection">
+                    <h3 class="subsection-title">Training Configuration</h3>
+                    <div class="training-config" id="training-config">
+                        <!-- Training config will be populated dynamically -->
+                    </div>
+                </div>
+
                 <!-- Model Summary -->
                 <div class="results-subsection">
-                    <h3 class="subsection-title">Model Summary</h3>
+                    <h3 class="subsection-title">Analysis Summary</h3>
                     <div class="model-summary-text" id="model-summary-text">
                         <!-- Summary will be populated dynamically -->
                     </div>
                 </div>
 
-                <!-- Download Model (less prominent) -->
-                <div class="model-download-small">
-                    <button class="btn-link" id="download-model-btn">
-                        Download model configuration
-                    </button>
+                <!-- Export Options (less prominent) -->
+                <div class="model-export-options">
+                    <span class="export-label">Export:</span>
+                    <button class="btn-link" id="download-model-btn">Model Config</button>
+                    <span class="separator">|</span>
+                    <button class="btn-link" id="download-report-btn">Training Report</button>
                 </div>
             </section>
 
