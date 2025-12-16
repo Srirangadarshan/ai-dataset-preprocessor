@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&family=Oswald:wght@200..700&family=Science+Gothic:wght@100..900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -55,16 +55,24 @@
                     </div>
                 </div>
 
-                <!-- Quick Prompts -->
+                <!-- Quick Prompts - Multi Select -->
                 <div class="quick-prompts">
-                    <span class="quick-label">Quick actions</span>
-                    <button class="chip" data-prompt="Remove all duplicate rows">Remove duplicates</button>
-                    <button class="chip" data-prompt="Remove rows with any empty or null values">Remove empty
-                        rows</button>
-                    <button class="chip" data-prompt="Trim whitespace from all string values">Trim whitespace</button>
-                    <button class="chip" data-prompt="Sort the data alphabetically by the first column">Sort
-                        data</button>
-                    <button class="chip" data-prompt="Convert all text to lowercase">Lowercase all</button>
+                    <div class="quick-header">
+                        <span class="quick-label">Quick actions (select multiple)</span>
+                        <button class="btn-clear-selection" id="clear-selection">Clear</button>
+                    </div>
+                    <div class="chips-container">
+                        <button class="chip" data-prompt="Remove all duplicate rows">Remove duplicates</button>
+                        <button class="chip" data-prompt="Remove rows with any empty or null values">Remove empty rows</button>
+                        <button class="chip" data-prompt="Trim whitespace from all string values">Trim whitespace</button>
+                        <button class="chip" data-prompt="Sort the data alphabetically by the first column">Sort data</button>
+                        <button class="chip" data-prompt="Convert all text to lowercase">Lowercase all</button>
+                        <button class="chip" data-prompt="Remove columns with more than 50% missing values">Remove sparse columns</button>
+                        <button class="chip" data-prompt="Fill missing values with column mean for numeric columns">Fill missing (mean)</button>
+                        <button class="chip" data-prompt="Normalize all numeric columns to 0-1 range">Normalize data</button>
+                        <button class="chip" data-prompt="Remove outliers using IQR method">Remove outliers</button>
+                        <button class="chip" data-prompt="Convert date columns to datetime format">Parse dates</button>
+                    </div>
                 </div>
             </section>
 
@@ -194,20 +202,7 @@
                     </div>
                 </div>
 
-                <!-- Charts Section -->
-                <div class="results-subsection charts-section">
-                    <h3 class="subsection-title">Model Analytics</h3>
-                    <div class="charts-grid">
-                        <div class="chart-container">
-                            <h4 class="chart-title">Feature Importance</h4>
-                            <canvas id="feature-importance-chart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <h4 class="chart-title">Metrics Overview</h4>
-                            <canvas id="metrics-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Feature Importance Table -->
                 <div class="results-subsection">

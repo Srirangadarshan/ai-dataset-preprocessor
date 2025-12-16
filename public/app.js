@@ -70,13 +70,24 @@ function setupEventListeners() {
     // Process button
     elements.processBtn.addEventListener('click', processData);
 
-    // Quick prompts
+    // Quick prompts - Multi select
     document.querySelectorAll('.chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            elements.promptInput.value = chip.dataset.prompt;
-            elements.promptInput.focus();
+            chip.classList.toggle('selected');
+            updatePromptFromChips();
         });
     });
+
+    // Clear selection button
+    const clearSelectionBtn = document.getElementById('clear-selection');
+    if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', () => {
+            document.querySelectorAll('.chip.selected').forEach(chip => {
+                chip.classList.remove('selected');
+            });
+            elements.promptInput.value = '';
+        });
+    }
 
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
@@ -606,87 +617,81 @@ function displayTrainingResults(result) {
         `;
     }
 
-    // Build metrics HTML
+    // Build metrics HTML - Show ALL metrics
     const metrics = result.metrics;
     let metricsHTML = '';
 
+    // Classification Metrics
     if (metrics.accuracy !== null && metrics.accuracy !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${(metrics.accuracy * 100).toFixed(1)}%</span>
-                <span class="metric-label">Accuracy</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.accuracy * 100, 'Accuracy', '%');
     }
-
     if (metrics.precision !== null && metrics.precision !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${(metrics.precision * 100).toFixed(1)}%</span>
-                <span class="metric-label">Precision</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.precision * 100, 'Precision', '%');
     }
-
     if (metrics.recall !== null && metrics.recall !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${(metrics.recall * 100).toFixed(1)}%</span>
-                <span class="metric-label">Recall</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.recall * 100, 'Recall', '%');
     }
-
     if (metrics.f1Score !== null && metrics.f1Score !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${(metrics.f1Score * 100).toFixed(1)}%</span>
-                <span class="metric-label">F1 Score</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.f1Score * 100, 'F1 Score', '%');
+    }
+    if (metrics.specificity !== null && metrics.specificity !== undefined) {
+        metricsHTML += createMetricCard(metrics.specificity * 100, 'Specificity', '%');
+    }
+    if (metrics.sensitivity !== null && metrics.sensitivity !== undefined) {
+        metricsHTML += createMetricCard(metrics.sensitivity * 100, 'Sensitivity', '%');
+    }
+    if (metrics.auc_roc !== null && metrics.auc_roc !== undefined) {
+        metricsHTML += createMetricCard(metrics.auc_roc * 100, 'AUC-ROC', '%');
+    }
+    if (metrics.logLoss !== null && metrics.logLoss !== undefined) {
+        metricsHTML += createMetricCard(metrics.logLoss, 'Log Loss', '', 4);
     }
 
+    // Regression Metrics
     if (metrics.r2Score !== null && metrics.r2Score !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${(metrics.r2Score * 100).toFixed(1)}%</span>
-                <span class="metric-label">R² Score</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.r2Score * 100, 'R² Score', '%');
     }
-
+    if (metrics.adjustedR2 !== null && metrics.adjustedR2 !== undefined) {
+        metricsHTML += createMetricCard(metrics.adjustedR2 * 100, 'Adjusted R²', '%');
+    }
     if (metrics.mse !== null && metrics.mse !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${typeof metrics.mse === 'number' ? metrics.mse.toFixed(4) : metrics.mse}</span>
-                <span class="metric-label">MSE</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.mse, 'MSE', '', 4);
     }
-
     if (metrics.rmse !== null && metrics.rmse !== undefined) {
-        metricsHTML += `
-            <div class="metric-card">
-                <span class="metric-value">${typeof metrics.rmse === 'number' ? metrics.rmse.toFixed(4) : metrics.rmse}</span>
-                <span class="metric-label">RMSE</span>
-            </div>
-        `;
+        metricsHTML += createMetricCard(metrics.rmse, 'RMSE', '', 4);
     }
-
     if (metrics.mae !== null && metrics.mae !== undefined) {
+        metricsHTML += createMetricCard(metrics.mae, 'MAE', '', 4);
+    }
+    if (metrics.mape !== null && metrics.mape !== undefined) {
+        metricsHTML += createMetricCard(metrics.mape, 'MAPE', '%');
+    }
+
+    // Cross-Validation Metrics
+    if (metrics.crossValScore !== null && metrics.crossValScore !== undefined) {
+        const cvStd = metrics.crossValStd ? ` ± ${(metrics.crossValStd * 100).toFixed(1)}` : '';
         metricsHTML += `
             <div class="metric-card">
-                <span class="metric-value">${typeof metrics.mae === 'number' ? metrics.mae.toFixed(4) : metrics.mae}</span>
-                <span class="metric-label">MAE</span>
+                <span class="metric-value">${(metrics.crossValScore * 100).toFixed(1)}%${cvStd}</span>
+                <span class="metric-label">Cross-Val Score (5-Fold)</span>
             </div>
         `;
     }
 
-    if (metrics.crossValScore !== null && metrics.crossValScore !== undefined) {
+    // Time Metrics
+    if (metrics.trainingTime) {
         metricsHTML += `
             <div class="metric-card">
-                <span class="metric-value">${(metrics.crossValScore * 100).toFixed(1)}%</span>
-                <span class="metric-label">Cross-Val Score</span>
+                <span class="metric-value">${metrics.trainingTime}</span>
+                <span class="metric-label">Training Time</span>
+            </div>
+        `;
+    }
+    if (metrics.predictionTime) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${metrics.predictionTime}</span>
+                <span class="metric-label">Prediction Time</span>
             </div>
         `;
     }
@@ -806,166 +811,31 @@ function displayTrainingResults(result) {
         `;
     }
 
-    // Render Charts
-    renderCharts(result);
-
     // Show prediction section
     showPredictionSection();
 }
 
-// Chart rendering functions
-let featureChart = null;
-let metricsChart = null;
-
-function renderCharts(result) {
-    // Feature Importance Chart
-    const featureCtx = document.getElementById('feature-importance-chart');
-    if (featureCtx && result.featureImportance) {
-        // Destroy existing chart
-        if (featureChart) {
-            featureChart.destroy();
-        }
-
-        const sortedFeatures = Object.entries(result.featureImportance)
-            .sort((a, b) => b[1] - a[1]);
-        
-        const labels = sortedFeatures.map(([name]) => name);
-        const data = sortedFeatures.map(([, value]) => (value * 100).toFixed(1));
-
-        featureChart = new Chart(featureCtx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Importance (%)',
-                    data: data,
-                    backgroundColor: 'rgba(26, 115, 232, 0.8)',
-                    borderColor: 'rgba(26, 115, 232, 1)',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        }
-                    },
-                    y: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
-            }
-        });
+// Update prompt from selected chips
+function updatePromptFromChips() {
+    const selectedChips = document.querySelectorAll('.chip.selected');
+    const prompts = Array.from(selectedChips).map(chip => chip.dataset.prompt);
+    
+    if (prompts.length > 0) {
+        elements.promptInput.value = prompts.join('. ') + '.';
+    } else {
+        elements.promptInput.value = '';
     }
+}
 
-    // Metrics Chart
-    const metricsCtx = document.getElementById('metrics-chart');
-    if (metricsCtx && result.metrics) {
-        // Destroy existing chart
-        if (metricsChart) {
-            metricsChart.destroy();
-        }
-
-        const metrics = result.metrics;
-        const metricLabels = [];
-        const metricData = [];
-        const metricColors = [];
-
-        if (metrics.accuracy !== null && metrics.accuracy !== undefined) {
-            metricLabels.push('Accuracy');
-            metricData.push((metrics.accuracy * 100).toFixed(1));
-            metricColors.push('rgba(19, 115, 51, 0.8)');
-        }
-        if (metrics.precision !== null && metrics.precision !== undefined) {
-            metricLabels.push('Precision');
-            metricData.push((metrics.precision * 100).toFixed(1));
-            metricColors.push('rgba(26, 115, 232, 0.8)');
-        }
-        if (metrics.recall !== null && metrics.recall !== undefined) {
-            metricLabels.push('Recall');
-            metricData.push((metrics.recall * 100).toFixed(1));
-            metricColors.push('rgba(249, 171, 0, 0.8)');
-        }
-        if (metrics.f1Score !== null && metrics.f1Score !== undefined) {
-            metricLabels.push('F1 Score');
-            metricData.push((metrics.f1Score * 100).toFixed(1));
-            metricColors.push('rgba(217, 48, 37, 0.8)');
-        }
-        if (metrics.r2Score !== null && metrics.r2Score !== undefined) {
-            metricLabels.push('R² Score');
-            metricData.push((metrics.r2Score * 100).toFixed(1));
-            metricColors.push('rgba(156, 39, 176, 0.8)');
-        }
-        if (metrics.crossValScore !== null && metrics.crossValScore !== undefined) {
-            metricLabels.push('Cross-Val');
-            metricData.push((metrics.crossValScore * 100).toFixed(1));
-            metricColors.push('rgba(0, 150, 136, 0.8)');
-        }
-
-        metricsChart = new Chart(metricsCtx, {
-            type: 'radar',
-            data: {
-                labels: metricLabels,
-                datasets: [{
-                    label: 'Model Performance',
-                    data: metricData,
-                    backgroundColor: 'rgba(26, 115, 232, 0.2)',
-                    borderColor: 'rgba(26, 115, 232, 1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: 'rgba(26, 115, 232, 1)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgba(26, 115, 232, 1)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                            stepSize: 20,
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        },
-                        angleLines: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        }
-                    }
-                }
-            }
-        });
-    }
+// Helper function to create metric cards
+function createMetricCard(value, label, suffix = '', decimals = 1) {
+    const displayValue = typeof value === 'number' ? value.toFixed(decimals) : value;
+    return `
+        <div class="metric-card">
+            <span class="metric-value">${displayValue}${suffix}</span>
+            <span class="metric-label">${label}</span>
+        </div>
+    `;
 }
 
 function showPredictionSection() {
