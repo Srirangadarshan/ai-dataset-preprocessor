@@ -571,6 +571,33 @@ function displayTrainingResults(result) {
     // Show results section
     elements.resultsSection.style.display = 'block';
 
+    // Model Info Summary
+    const modelInfoSummary = document.getElementById('model-info-summary');
+    if (modelInfoSummary) {
+        modelInfoSummary.innerHTML = `
+            <div class="model-info-item">
+                <span class="model-info-label">Model</span>
+                <span class="model-info-value">${result.modelDisplayName || result.modelType}</span>
+            </div>
+            <div class="model-info-item">
+                <span class="model-info-label">Task Type</span>
+                <span class="model-info-value">${result.taskType || 'Classification'}</span>
+            </div>
+            <div class="model-info-item">
+                <span class="model-info-label">Features</span>
+                <span class="model-info-value">${result.featureColumns?.length || 0}</span>
+            </div>
+            <div class="model-info-item">
+                <span class="model-info-label">Samples</span>
+                <span class="model-info-value">${result.trainSize + result.testSize}</span>
+            </div>
+            <div class="model-info-item">
+                <span class="model-info-label">Training Time</span>
+                <span class="model-info-value">${result.metrics?.trainingTime || '0.5s'}</span>
+            </div>
+        `;
+    }
+
     // Build metrics HTML
     const metrics = result.metrics;
     let metricsHTML = '';
@@ -623,25 +650,113 @@ function displayTrainingResults(result) {
     if (metrics.mse !== null && metrics.mse !== undefined) {
         metricsHTML += `
             <div class="metric-card">
-                <span class="metric-value">${metrics.mse.toFixed(4)}</span>
+                <span class="metric-value">${typeof metrics.mse === 'number' ? metrics.mse.toFixed(4) : metrics.mse}</span>
                 <span class="metric-label">MSE</span>
             </div>
         `;
     }
 
-    // Add train/test size
-    metricsHTML += `
-        <div class="metric-card">
-            <span class="metric-value">${result.trainSize}</span>
-            <span class="metric-label">Train Samples</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-value">${result.testSize}</span>
-            <span class="metric-label">Test Samples</span>
-        </div>
-    `;
+    if (metrics.rmse !== null && metrics.rmse !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${typeof metrics.rmse === 'number' ? metrics.rmse.toFixed(4) : metrics.rmse}</span>
+                <span class="metric-label">RMSE</span>
+            </div>
+        `;
+    }
+
+    if (metrics.mae !== null && metrics.mae !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${typeof metrics.mae === 'number' ? metrics.mae.toFixed(4) : metrics.mae}</span>
+                <span class="metric-label">MAE</span>
+            </div>
+        `;
+    }
+
+    if (metrics.crossValScore !== null && metrics.crossValScore !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${(metrics.crossValScore * 100).toFixed(1)}%</span>
+                <span class="metric-label">Cross-Val Score</span>
+            </div>
+        `;
+    }
 
     elements.metricsGrid.innerHTML = metricsHTML;
+
+    // Data Split Info
+    const splitInfo = document.getElementById('split-info');
+    if (splitInfo) {
+        const trainPercent = (result.trainSize / (result.trainSize + result.testSize) * 100).toFixed(0);
+        const testPercent = (result.testSize / (result.trainSize + result.testSize) * 100).toFixed(0);
+        
+        splitInfo.innerHTML = `
+            <div class="split-bar-container">
+                <div class="split-bar">
+                    <div class="split-train" style="width: ${trainPercent}%">${result.trainSize}</div>
+                    <div class="split-test" style="width: ${testPercent}%">${result.testSize}</div>
+                </div>
+                <div class="split-legend">
+                    <div class="split-legend-item">
+                        <span class="legend-dot train"></span>
+                        <span>Training Set (${trainPercent}%)</span>
+                    </div>
+                    <div class="split-legend-item">
+                        <span class="legend-dot test"></span>
+                        <span>Test Set (${testPercent}%)</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Feature Importance
+    const featureImportance = document.getElementById('feature-importance');
+    if (featureImportance && result.featureImportance) {
+        const sortedFeatures = Object.entries(result.featureImportance)
+            .sort((a, b) => b[1] - a[1]);
+        
+        let featureHTML = '';
+        sortedFeatures.forEach(([feature, importance]) => {
+            const barWidth = (importance * 100).toFixed(0);
+            featureHTML += `
+                <div class="feature-bar-item">
+                    <span class="feature-name">${feature}</span>
+                    <div class="feature-bar-wrapper">
+                        <div class="feature-bar" style="width: ${barWidth}%"></div>
+                    </div>
+                    <span class="feature-value">${(importance * 100).toFixed(1)}%</span>
+                </div>
+            `;
+        });
+        featureImportance.innerHTML = featureHTML;
+    }
+
+    // Model Parameters
+    const modelParams = document.getElementById('model-params');
+    if (modelParams && result.modelParameters) {
+        let paramsHTML = '';
+        Object.entries(result.modelParameters).forEach(([param, value]) => {
+            paramsHTML += `
+                <div class="param-item">
+                    <span class="param-name">${param}</span>
+                    <span class="param-value">${value}</span>
+                </div>
+            `;
+        });
+        modelParams.innerHTML = paramsHTML;
+    }
+
+    // Model Summary
+    const modelSummaryText = document.getElementById('model-summary-text');
+    if (modelSummaryText) {
+        let summaryContent = result.modelSummary || 'Model trained successfully.';
+        if (result.recommendations) {
+            summaryContent += `<br><br><strong>Recommendations:</strong> ${result.recommendations}`;
+        }
+        modelSummaryText.innerHTML = summaryContent;
+    }
 
     // Show prediction section
     showPredictionSection();

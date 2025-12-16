@@ -174,15 +174,55 @@
             <section class="card results-section" id="results-section" style="display: none;">
                 <h2>Model Results</h2>
                 
-                <!-- Metrics Display -->
-                <div class="metrics-grid" id="metrics-grid">
-                    <!-- Metrics will be populated dynamically -->
+                <!-- Model Info Summary -->
+                <div class="model-info-summary" id="model-info-summary">
+                    <!-- Model summary will be populated dynamically -->
                 </div>
 
-                <!-- Download Model -->
-                <div class="model-download">
-                    <button class="btn btn-primary" id="download-model-btn">
-                        Download Trained Model
+                <!-- Performance Metrics -->
+                <div class="results-subsection">
+                    <h3 class="subsection-title">Performance Metrics</h3>
+                    <div class="metrics-grid" id="metrics-grid">
+                        <!-- Metrics will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Data Split Info -->
+                <div class="results-subsection">
+                    <h3 class="subsection-title">Data Split</h3>
+                    <div class="split-info" id="split-info">
+                        <!-- Split info will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Feature Importance -->
+                <div class="results-subsection">
+                    <h3 class="subsection-title">Feature Importance</h3>
+                    <div class="feature-importance" id="feature-importance">
+                        <!-- Feature importance will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Model Parameters -->
+                <div class="results-subsection">
+                    <h3 class="subsection-title">Model Parameters</h3>
+                    <div class="model-params" id="model-params">
+                        <!-- Model parameters will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Model Summary -->
+                <div class="results-subsection">
+                    <h3 class="subsection-title">Model Summary</h3>
+                    <div class="model-summary-text" id="model-summary-text">
+                        <!-- Summary will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Download Model (less prominent) -->
+                <div class="model-download-small">
+                    <button class="btn-link" id="download-model-btn">
+                        Download model configuration
                     </button>
                 </div>
             </section>

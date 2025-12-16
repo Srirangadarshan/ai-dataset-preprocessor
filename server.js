@@ -309,8 +309,8 @@ app.post('/api/train', async (req, res) => {
             testSplit: testSplit || 0.2
         };
 
-        // Craft the ML training prompt
-        const aiPrompt = `You are a machine learning expert. Analyze this dataset and simulate training a ${modelType} model.
+        // Craft the ML training prompt with comprehensive data science info
+        const aiPrompt = `You are a machine learning expert and data scientist. Analyze this dataset and simulate training a ${modelType} model with comprehensive analysis.
 
 DATASET STATISTICS:
 - Total rows: ${dataStats.totalRows}
@@ -322,29 +322,52 @@ DATASET STATISTICS:
 SAMPLE DATA (first 20 rows):
 ${dataSample}
 
-TASK: Simulate training a ${modelType} model on this data. Analyze the data patterns and provide realistic metrics.
+TASK: Simulate training a ${modelType} model on this data. Provide comprehensive data science analysis including model parameters, feature importance, and detailed metrics.
 
 RESPOND WITH ONLY THIS JSON FORMAT (no other text):
 {
     "success": true,
     "modelType": "${modelType}",
+    "modelDisplayName": "<Human readable model name>",
+    "taskType": "<classification or regression>",
     "metrics": {
-        "accuracy": <number between 0.6 and 0.98>,
-        "precision": <number between 0.6 and 0.98>,
-        "recall": <number between 0.6 and 0.98>,
-        "f1Score": <number between 0.6 and 0.98>,
-        "mse": <number for regression models, null for classification>,
-        "r2Score": <number for regression models, null for classification>
+        "accuracy": <number between 0.6 and 0.98 for classification, null for regression>,
+        "precision": <number between 0.6 and 0.98 for classification, null for regression>,
+        "recall": <number between 0.6 and 0.98 for classification, null for regression>,
+        "f1Score": <number between 0.6 and 0.98 for classification, null for regression>,
+        "mse": <number for regression, null for classification>,
+        "rmse": <number for regression, null for classification>,
+        "mae": <number for regression, null for classification>,
+        "r2Score": <number between 0.5 and 0.98 for regression, null for classification>,
+        "crossValScore": <number between 0.6 and 0.95>,
+        "trainingTime": "<time in seconds like 0.45s>"
     },
     "trainSize": ${Math.floor(dataStats.totalRows * (1 - dataStats.testSplit))},
     "testSize": ${Math.floor(dataStats.totalRows * dataStats.testSplit)},
     "featureImportance": {
-        <feature_name>: <importance_score between 0 and 1>
+        ${featureColumns.map(col => `"${col}": <importance between 0.01 and 1.0>`).join(',\n        ')}
     },
-    "modelSummary": "<brief description of model performance>"
+    "modelParameters": {
+        ${modelType === 'linear-regression' ? '"fit_intercept": true, "normalize": false, "coefficients": "computed"' : ''}
+        ${modelType === 'logistic-regression' ? '"solver": "lbfgs", "max_iter": 100, "C": 1.0, "penalty": "l2"' : ''}
+        ${modelType === 'decision-tree' ? '"max_depth": <number 3-10>, "min_samples_split": 2, "min_samples_leaf": 1, "criterion": "gini"' : ''}
+        ${modelType === 'random-forest' ? '"n_estimators": 100, "max_depth": <number 5-15>, "min_samples_split": 2, "bootstrap": true' : ''}
+        ${modelType === 'knn' ? '"n_neighbors": <number 3-7>, "weights": "uniform", "algorithm": "auto", "metric": "minkowski"' : ''}
+        ${modelType === 'naive-bayes' ? '"var_smoothing": 1e-9, "priors": null, "type": "GaussianNB"' : ''}
+    },
+    "dataAnalysis": {
+        "totalFeatures": ${featureColumns.length},
+        "totalSamples": ${dataStats.totalRows},
+        "missingValues": <number 0-5>,
+        "categoricalFeatures": <number>,
+        "numericalFeatures": <number>,
+        "targetDistribution": "<balanced or imbalanced for classification, continuous for regression>"
+    },
+    "modelSummary": "<2-3 sentence detailed analysis of model performance, strengths, and potential improvements>",
+    "recommendations": "<1-2 sentence recommendation for improving model performance>"
 }
 
-Make the metrics realistic based on the data quality and model type. For regression models (linear-regression), include mse and r2Score. For classification models, focus on accuracy, precision, recall, f1Score.`;
+Make all metrics realistic based on the data quality, size, and model type. Ensure feature importance values sum close to 1.0.`;
 
         let result, response, responseText;
         let retries = 3;
