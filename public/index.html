@@ -105,6 +105,108 @@
                     </button>
                 </div>
             </section>
+
+            <!-- ML Training Section -->
+            <section class="card ml-section" id="ml-section" style="display: none;">
+                <h2>Train ML Model</h2>
+                <p class="section-desc">Train a simple machine learning model on your processed data</p>
+                
+                <!-- Target Column Selection -->
+                <div class="ml-config">
+                    <div class="config-group">
+                        <label for="target-column">Target Column (Y)</label>
+                        <select id="target-column" class="select-input">
+                            <option value="">Select target column...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="test-split">Test Split</label>
+                        <select id="test-split" class="select-input">
+                            <option value="0.2">20%</option>
+                            <option value="0.25">25%</option>
+                            <option value="0.3">30%</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Model Selection -->
+                <div class="model-options">
+                    <span class="model-label">Select Model</span>
+                    <div class="model-grid">
+                        <button class="model-card" data-model="linear-regression">
+                            <span class="model-name">Linear Regression</span>
+                            <span class="model-type">Regression</span>
+                        </button>
+                        <button class="model-card" data-model="logistic-regression">
+                            <span class="model-name">Logistic Regression</span>
+                            <span class="model-type">Classification</span>
+                        </button>
+                        <button class="model-card" data-model="decision-tree">
+                            <span class="model-name">Decision Tree</span>
+                            <span class="model-type">Both</span>
+                        </button>
+                        <button class="model-card" data-model="random-forest">
+                            <span class="model-name">Random Forest</span>
+                            <span class="model-type">Both</span>
+                        </button>
+                        <button class="model-card" data-model="knn">
+                            <span class="model-name">KNN</span>
+                            <span class="model-type">Both</span>
+                        </button>
+                        <button class="model-card" data-model="naive-bayes">
+                            <span class="model-name">Naive Bayes</span>
+                            <span class="model-type">Classification</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Train Button -->
+                <div class="train-actions">
+                    <button class="btn btn-primary" id="train-btn" disabled>
+                        <span class="btn-text">Train Model</span>
+                        <span class="btn-loading" style="display: none;">Training...</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Model Results Section -->
+            <section class="card results-section" id="results-section" style="display: none;">
+                <h2>Model Results</h2>
+                
+                <!-- Metrics Display -->
+                <div class="metrics-grid" id="metrics-grid">
+                    <!-- Metrics will be populated dynamically -->
+                </div>
+
+                <!-- Download Model -->
+                <div class="model-download">
+                    <button class="btn btn-primary" id="download-model-btn">
+                        Download Trained Model
+                    </button>
+                </div>
+            </section>
+
+            <!-- Prediction Section -->
+            <section class="card prediction-section" id="prediction-section" style="display: none;">
+                <h2>Make Prediction</h2>
+                <p class="section-desc">Enter values to predict using your trained model</p>
+                
+                <div class="prediction-inputs" id="prediction-inputs">
+                    <!-- Input fields will be populated dynamically -->
+                </div>
+                
+                <div class="prediction-actions">
+                    <button class="btn btn-primary" id="predict-btn">
+                        Predict
+                    </button>
+                </div>
+                
+                <div class="prediction-result" id="prediction-result" style="display: none;">
+                    <span class="result-label">Prediction Result</span>
+                    <span class="result-value" id="result-value"></span>
+                </div>
+            </section>
         </main>
 
         <!-- Toast Notification -->

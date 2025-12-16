@@ -8,7 +8,12 @@ const state = {
     processedData: null,
     fileType: null,
     fileName: null,
-    currentView: 'original'
+    currentView: 'original',
+    // ML State
+    selectedModel: null,
+    trainedModelId: null,
+    featureColumns: [],
+    targetColumn: null
 };
 
 // DOM Elements
@@ -27,7 +32,20 @@ const elements = {
     exportSection: document.getElementById('export-section'),
     processedTab: document.getElementById('processed-tab'),
     toast: document.getElementById('toast'),
-    toastMessage: document.getElementById('toast-message')
+    toastMessage: document.getElementById('toast-message'),
+    // ML Elements
+    mlSection: document.getElementById('ml-section'),
+    targetColumn: document.getElementById('target-column'),
+    testSplit: document.getElementById('test-split'),
+    trainBtn: document.getElementById('train-btn'),
+    resultsSection: document.getElementById('results-section'),
+    metricsGrid: document.getElementById('metrics-grid'),
+    downloadModelBtn: document.getElementById('download-model-btn'),
+    predictionSection: document.getElementById('prediction-section'),
+    predictionInputs: document.getElementById('prediction-inputs'),
+    predictBtn: document.getElementById('predict-btn'),
+    predictionResult: document.getElementById('prediction-result'),
+    resultValue: document.getElementById('result-value')
 };
 
 // Initialize
@@ -68,6 +86,31 @@ function setupEventListeners() {
     document.querySelectorAll('.btn-export').forEach(btn => {
         btn.addEventListener('click', () => exportData(btn.dataset.format));
     });
+
+    // ML Model selection
+    document.querySelectorAll('.model-card').forEach(card => {
+        card.addEventListener('click', () => selectModel(card));
+    });
+
+    // Target column change
+    if (elements.targetColumn) {
+        elements.targetColumn.addEventListener('change', updateTrainButton);
+    }
+
+    // Train button
+    if (elements.trainBtn) {
+        elements.trainBtn.addEventListener('click', trainModel);
+    }
+
+    // Download model button
+    if (elements.downloadModelBtn) {
+        elements.downloadModelBtn.addEventListener('click', downloadModel);
+    }
+
+    // Predict button
+    if (elements.predictBtn) {
+        elements.predictBtn.addEventListener('click', makePrediction);
+    }
 }
 
 // File handling
@@ -149,6 +192,10 @@ function clearFile() {
     state.processedData = null;
     state.fileType = null;
     state.fileName = null;
+    state.selectedModel = null;
+    state.trainedModelId = null;
+    state.featureColumns = [];
+    state.targetColumn = null;
 
     elements.fileInput.value = '';
     elements.fileInfo.style.display = 'none';
@@ -157,6 +204,14 @@ function clearFile() {
     elements.exportSection.style.display = 'none';
     elements.promptInput.value = '';
     elements.processedTab.disabled = true;
+
+    // Hide ML sections
+    if (elements.mlSection) elements.mlSection.style.display = 'none';
+    if (elements.resultsSection) elements.resultsSection.style.display = 'none';
+    if (elements.predictionSection) elements.predictionSection.style.display = 'none';
+    
+    // Reset model selection
+    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
 }
 
 // Data processing
@@ -213,6 +268,9 @@ async function processData() {
 
         // Show export section
         elements.exportSection.style.display = 'block';
+
+        // Show ML section if data is suitable
+        showMLSection();
 
         showToast('Data processed successfully!', 'success');
 
@@ -397,4 +455,296 @@ function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ==========================================
+// ML Training Functions
+// ==========================================
+
+function selectModel(card) {
+    // Remove selection from all cards
+    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+    
+    // Select clicked card
+    card.classList.add('selected');
+    state.selectedModel = card.dataset.model;
+    
+    updateTrainButton();
+}
+
+function updateTrainButton() {
+    const hasTarget = elements.targetColumn && elements.targetColumn.value;
+    const hasModel = state.selectedModel;
+    
+    if (elements.trainBtn) {
+        elements.trainBtn.disabled = !(hasTarget && hasModel);
+    }
+}
+
+function populateTargetColumns(data) {
+    if (!elements.targetColumn || !Array.isArray(data) || data.length === 0) return;
+    
+    const columns = Object.keys(data[0]);
+    
+    // Clear existing options
+    elements.targetColumn.innerHTML = '<option value="">Select target column...</option>';
+    
+    // Add column options
+    columns.forEach(col => {
+        const option = document.createElement('option');
+        option.value = col;
+        option.textContent = col;
+        elements.targetColumn.appendChild(option);
+    });
+}
+
+function showMLSection() {
+    if (elements.mlSection && state.processedData && Array.isArray(state.processedData)) {
+        elements.mlSection.style.display = 'block';
+        populateTargetColumns(state.processedData);
+    }
+}
+
+async function trainModel() {
+    if (!state.processedData || !state.selectedModel || !elements.targetColumn.value) {
+        showToast('Please select target column and model type', 'error');
+        return;
+    }
+
+    const btn = elements.trainBtn;
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoading = btn.querySelector('.btn-loading');
+
+    try {
+        // Show loading state
+        btn.disabled = true;
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline';
+        btnLoading.innerHTML = '<span class="loading"></span> Training...';
+
+        showToast('Training model...', 'info');
+
+        const response = await fetch('/api/train', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                data: state.processedData,
+                targetColumn: elements.targetColumn.value,
+                modelType: state.selectedModel,
+                testSplit: parseFloat(elements.testSplit.value)
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Training failed');
+        }
+
+        // Store model info
+        state.trainedModelId = result.modelId;
+        state.featureColumns = result.featureColumns;
+        state.targetColumn = elements.targetColumn.value;
+
+        // Display results
+        displayTrainingResults(result);
+
+        showToast('Model trained successfully!', 'success');
+
+    } catch (error) {
+        console.error('Training error:', error);
+        showToast(error.message, 'error');
+    } finally {
+        // Reset button
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+        updateTrainButton();
+    }
+}
+
+function displayTrainingResults(result) {
+    if (!elements.resultsSection || !elements.metricsGrid) return;
+
+    // Show results section
+    elements.resultsSection.style.display = 'block';
+
+    // Build metrics HTML
+    const metrics = result.metrics;
+    let metricsHTML = '';
+
+    if (metrics.accuracy !== null && metrics.accuracy !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${(metrics.accuracy * 100).toFixed(1)}%</span>
+                <span class="metric-label">Accuracy</span>
+            </div>
+        `;
+    }
+
+    if (metrics.precision !== null && metrics.precision !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${(metrics.precision * 100).toFixed(1)}%</span>
+                <span class="metric-label">Precision</span>
+            </div>
+        `;
+    }
+
+    if (metrics.recall !== null && metrics.recall !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${(metrics.recall * 100).toFixed(1)}%</span>
+                <span class="metric-label">Recall</span>
+            </div>
+        `;
+    }
+
+    if (metrics.f1Score !== null && metrics.f1Score !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${(metrics.f1Score * 100).toFixed(1)}%</span>
+                <span class="metric-label">F1 Score</span>
+            </div>
+        `;
+    }
+
+    if (metrics.r2Score !== null && metrics.r2Score !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${(metrics.r2Score * 100).toFixed(1)}%</span>
+                <span class="metric-label">R² Score</span>
+            </div>
+        `;
+    }
+
+    if (metrics.mse !== null && metrics.mse !== undefined) {
+        metricsHTML += `
+            <div class="metric-card">
+                <span class="metric-value">${metrics.mse.toFixed(4)}</span>
+                <span class="metric-label">MSE</span>
+            </div>
+        `;
+    }
+
+    // Add train/test size
+    metricsHTML += `
+        <div class="metric-card">
+            <span class="metric-value">${result.trainSize}</span>
+            <span class="metric-label">Train Samples</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-value">${result.testSize}</span>
+            <span class="metric-label">Test Samples</span>
+        </div>
+    `;
+
+    elements.metricsGrid.innerHTML = metricsHTML;
+
+    // Show prediction section
+    showPredictionSection();
+}
+
+function showPredictionSection() {
+    if (!elements.predictionSection || !elements.predictionInputs || !state.featureColumns) return;
+
+    elements.predictionSection.style.display = 'block';
+
+    // Build input fields for each feature
+    let inputsHTML = '';
+    state.featureColumns.forEach(col => {
+        inputsHTML += `
+            <div class="prediction-input-group">
+                <label for="pred-${col}">${col}</label>
+                <input type="text" id="pred-${col}" data-feature="${col}" placeholder="Enter ${col}">
+            </div>
+        `;
+    });
+
+    elements.predictionInputs.innerHTML = inputsHTML;
+}
+
+async function downloadModel() {
+    if (!state.trainedModelId) {
+        showToast('No trained model to download', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/model/${state.trainedModelId}/download`);
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Download failed');
+        }
+
+        downloadFile(result.content, result.filename, result.contentType);
+        showToast(`Downloaded ${result.filename}`, 'success');
+
+    } catch (error) {
+        console.error('Download error:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function makePrediction() {
+    if (!state.trainedModelId) {
+        showToast('Please train a model first', 'error');
+        return;
+    }
+
+    // Gather input values
+    const inputData = {};
+    let hasAllInputs = true;
+
+    state.featureColumns.forEach(col => {
+        const input = document.querySelector(`[data-feature="${col}"]`);
+        if (input && input.value.trim()) {
+            // Try to convert to number if possible
+            const value = input.value.trim();
+            inputData[col] = isNaN(value) ? value : parseFloat(value);
+        } else {
+            hasAllInputs = false;
+        }
+    });
+
+    if (!hasAllInputs) {
+        showToast('Please fill in all feature values', 'error');
+        return;
+    }
+
+    try {
+        showToast('Making prediction...', 'info');
+
+        const response = await fetch('/api/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                modelId: state.trainedModelId,
+                inputData: inputData
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Prediction failed');
+        }
+
+        // Display prediction result
+        if (elements.predictionResult && elements.resultValue) {
+            elements.predictionResult.style.display = 'flex';
+            elements.resultValue.textContent = result.prediction;
+        }
+
+        showToast('Prediction complete!', 'success');
+
+    } catch (error) {
+        console.error('Prediction error:', error);
+        showToast(error.message, 'error');
+    }
 }

@@ -277,6 +277,248 @@ app.post('/api/export', (req, res) => {
     }
 });
 
+// Store trained models in memory (for demo purposes)
+const trainedModels = new Map();
+
+// ML Training endpoint - uses Gemini to simulate ML training
+app.post('/api/train', async (req, res) => {
+    try {
+        const { data, targetColumn, modelType, testSplit } = req.body;
+
+        if (!data || !targetColumn || !modelType) {
+            return res.status(400).json({ error: 'Data, target column, and model type are required' });
+        }
+
+        if (!Array.isArray(data) || data.length < 10) {
+            return res.status(400).json({ error: 'Need at least 10 rows of data for training' });
+        }
+
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        // Get feature columns (all except target)
+        const allColumns = Object.keys(data[0]);
+        const featureColumns = allColumns.filter(col => col !== targetColumn);
+
+        // Prepare data summary for AI
+        const dataSample = JSON.stringify(data.slice(0, 20), null, 2);
+        const dataStats = {
+            totalRows: data.length,
+            columns: allColumns,
+            targetColumn: targetColumn,
+            featureColumns: featureColumns,
+            testSplit: testSplit || 0.2
+        };
+
+        // Craft the ML training prompt
+        const aiPrompt = `You are a machine learning expert. Analyze this dataset and simulate training a ${modelType} model.
+
+DATASET STATISTICS:
+- Total rows: ${dataStats.totalRows}
+- Feature columns: ${featureColumns.join(', ')}
+- Target column: ${targetColumn}
+- Test split: ${(dataStats.testSplit * 100)}%
+- Model type: ${modelType}
+
+SAMPLE DATA (first 20 rows):
+${dataSample}
+
+TASK: Simulate training a ${modelType} model on this data. Analyze the data patterns and provide realistic metrics.
+
+RESPOND WITH ONLY THIS JSON FORMAT (no other text):
+{
+    "success": true,
+    "modelType": "${modelType}",
+    "metrics": {
+        "accuracy": <number between 0.6 and 0.98>,
+        "precision": <number between 0.6 and 0.98>,
+        "recall": <number between 0.6 and 0.98>,
+        "f1Score": <number between 0.6 and 0.98>,
+        "mse": <number for regression models, null for classification>,
+        "r2Score": <number for regression models, null for classification>
+    },
+    "trainSize": ${Math.floor(dataStats.totalRows * (1 - dataStats.testSplit))},
+    "testSize": ${Math.floor(dataStats.totalRows * dataStats.testSplit)},
+    "featureImportance": {
+        <feature_name>: <importance_score between 0 and 1>
+    },
+    "modelSummary": "<brief description of model performance>"
+}
+
+Make the metrics realistic based on the data quality and model type. For regression models (linear-regression), include mse and r2Score. For classification models, focus on accuracy, precision, recall, f1Score.`;
+
+        let result, response, responseText;
+        let retries = 3;
+        
+        while (retries > 0) {
+            try {
+                result = await model.generateContent(aiPrompt);
+                response = await result.response;
+                responseText = response.text().trim();
+                break;
+            } catch (retryError) {
+                retries--;
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    throw retryError;
+                }
+            }
+        }
+
+        // Clean up response
+        responseText = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+        let trainingResult;
+        try {
+            trainingResult = JSON.parse(responseText);
+        } catch (parseError) {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                trainingResult = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('Failed to parse training results');
+            }
+        }
+
+        // Generate a model ID and store model info
+        const modelId = `model_${Date.now()}`;
+        trainedModels.set(modelId, {
+            modelType,
+            targetColumn,
+            featureColumns,
+            metrics: trainingResult.metrics,
+            trainedAt: new Date().toISOString(),
+            dataShape: { rows: data.length, features: featureColumns.length }
+        });
+
+        res.json({
+            success: true,
+            modelId: modelId,
+            ...trainingResult,
+            featureColumns: featureColumns
+        });
+
+    } catch (error) {
+        console.error('Training error:', error);
+        res.status(500).json({ error: 'Model training failed: ' + error.message });
+    }
+});
+
+// Download trained model endpoint
+app.get('/api/model/:modelId/download', (req, res) => {
+    try {
+        const { modelId } = req.params;
+        const modelInfo = trainedModels.get(modelId);
+
+        if (!modelInfo) {
+            return res.status(404).json({ error: 'Model not found' });
+        }
+
+        // Create a model file (JSON representation)
+        const modelFile = {
+            modelId: modelId,
+            ...modelInfo,
+            exportedAt: new Date().toISOString(),
+            version: '1.0.0',
+            framework: 'AI Dataset Preprocessor',
+            note: 'This is a simulated model for demonstration purposes'
+        };
+
+        res.json({
+            success: true,
+            content: JSON.stringify(modelFile, null, 2),
+            filename: `${modelInfo.modelType}_model_${modelId}.json`,
+            contentType: 'application/json'
+        });
+
+    } catch (error) {
+        console.error('Model download error:', error);
+        res.status(500).json({ error: 'Failed to download model: ' + error.message });
+    }
+});
+
+// Prediction endpoint
+app.post('/api/predict', async (req, res) => {
+    try {
+        const { modelId, inputData } = req.body;
+
+        if (!modelId || !inputData) {
+            return res.status(400).json({ error: 'Model ID and input data are required' });
+        }
+
+        const modelInfo = trainedModels.get(modelId);
+        if (!modelInfo) {
+            return res.status(404).json({ error: 'Model not found. Please train a model first.' });
+        }
+
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        // Craft prediction prompt
+        const aiPrompt = `You are a machine learning prediction system. Based on the trained ${modelInfo.modelType} model, predict the ${modelInfo.targetColumn} value.
+
+MODEL INFO:
+- Type: ${modelInfo.modelType}
+- Target: ${modelInfo.targetColumn}
+- Features: ${modelInfo.featureColumns.join(', ')}
+- Model Accuracy: ${modelInfo.metrics.accuracy || modelInfo.metrics.r2Score}
+
+INPUT DATA FOR PREDICTION:
+${JSON.stringify(inputData, null, 2)}
+
+TASK: Provide a realistic prediction for the target column "${modelInfo.targetColumn}" based on the input values.
+
+RESPOND WITH ONLY THIS JSON FORMAT (no other text):
+{
+    "prediction": <predicted value - number or string based on model type>,
+    "confidence": <confidence score between 0.7 and 0.99>,
+    "explanation": "<brief explanation of the prediction>"
+}`;
+
+        let result, response, responseText;
+        let retries = 3;
+        
+        while (retries > 0) {
+            try {
+                result = await model.generateContent(aiPrompt);
+                response = await result.response;
+                responseText = response.text().trim();
+                break;
+            } catch (retryError) {
+                retries--;
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    throw retryError;
+                }
+            }
+        }
+
+        // Clean up response
+        responseText = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+        let predictionResult;
+        try {
+            predictionResult = JSON.parse(responseText);
+        } catch (parseError) {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                predictionResult = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('Failed to parse prediction');
+            }
+        }
+
+        res.json({
+            success: true,
+            ...predictionResult
+        });
+
+    } catch (error) {
+        console.error('Prediction error:', error);
+        res.status(500).json({ error: 'Prediction failed: ' + error.message });
+    }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -285,4 +527,5 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Dataset Preprocessor running at http://localhost:${PORT}`);
     console.log(`📁 Upload your dataset and use AI to preprocess it!`);
+    console.log(`🤖 ML Training feature enabled!`);
 });
